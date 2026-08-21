@@ -13,7 +13,7 @@ Set Shortcut = WshShell.CreateShortcut(DesktopPath & "\PDF Unlocker Pro.lnk")
 
 ' Set shortcut properties
 Shortcut.TargetPath = ScriptDir & "\run_app.bat"
-Shortcut.WorkingDirectory = ScriptDir
+Shortcut.WorkingDirectory = fso.GetParentFolderName(ScriptDir)
 Shortcut.Description = "PDF Unlocker Pro - Unlock password-protected PDFs"
 Shortcut.IconLocation = "shell32.dll,265"  ' Lock icon
 

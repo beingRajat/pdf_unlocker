@@ -1,55 +1,47 @@
 @echo off
-REM PDF Unlocker Pro - Launcher Script
-REM This script installs dependencies and runs the application
+REM PDF Unlocker Pro - launcher. Installs dependencies on first run.
+setlocal
+cd /d "%~dp0.."
 
 echo ========================================
-echo PDF Unlocker Pro - Launcher
+echo PDF Unlocker Pro
 echo ========================================
 echo.
 
-REM Check if Python is installed
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python from https://www.python.org/downloads/
+    echo ERROR: Python is not installed or not on PATH.
+    echo Install Python 3.9+ from https://www.python.org/downloads/
     echo.
     pause
     exit /b 1
 )
 
-echo Python found:
-python --version
-echo.
-
-REM Check if dependencies are installed
-python -c "import pikepdf" 2>NUL
+REM customtkinter is the newest requirement, so it is the one worth probing.
+python -c "import pikepdf, customtkinter" >nul 2>&1
 if errorlevel 1 (
-    echo Installing dependencies...
-    echo This may take a minute...
+    echo Installing dependencies, this may take a minute...
     echo.
     pip install -r requirements.txt
     if errorlevel 1 (
         echo.
-        echo ERROR: Failed to install dependencies
+        echo ERROR: Failed to install dependencies.
         echo.
         pause
         exit /b 1
     )
     echo.
-    echo Dependencies installed successfully!
-    echo.
 )
 
 echo Starting PDF Unlocker Pro...
 echo.
-
-REM Run the application
-python pdf_unlocker.py
+python -m pdf_unlocker
 
 if errorlevel 1 (
     echo.
     echo ========================================
     echo Application exited with an error
+    echo Check the log directory named in the README
     echo ========================================
     echo.
     pause

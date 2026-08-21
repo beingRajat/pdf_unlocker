@@ -1,236 +1,195 @@
 # PDF Unlocker Pro
 
-A professional desktop application for unlocking password-protected PDF files with a clean, user-friendly interface.
+A Windows desktop application that removes encryption from password-protected
+PDFs in batch. You supply the passwords; it tries each one against every file
+and writes decrypted copies alongside the originals.
 
-## Features
+This is **not** a password cracker. It only opens files whose password you
+already know.
 
-- **Multiple Input Methods**: Browse individual files, select entire folders, or drag-and-drop PDFs directly into the application
-- **Batch Processing**: Process multiple PDFs simultaneously with progress tracking and ETA
-- **Password Management**: Securely store passwords using your system's credential manager (Windows Credential Locker, macOS Keychain, Linux Secret Service)
-- **Smart Password Handling**: Enter multiple passwords at once (comma-separated or one per line) - the app tries them all
-- **Progress Tracking**: Real-time progress bar with estimated time remaining
-- **Results Export**: Export processing results to CSV for record-keeping
-- **Multi-threaded**: Processes up to 3 PDFs concurrently while keeping the UI responsive
-- **Professional UI**: Clean, intuitive interface that anyone can use
+## Quick start
 
-## Installation
+```bash
+pip install -r requirements.txt
+python -m pdf_unlocker
+```
 
-### Requirements
+Or double-click `scripts\run_app.bat`, which installs dependencies on first run.
+`scripts\create_desktop_shortcut.vbs` puts a shortcut to that on your desktop.
 
-- Python 3.8 or higher
-- Windows, macOS, or Linux
+Requires Python 3.9 or newer.
 
-### Setup
+## How it works
 
-1. **Clone or download** this repository
+For each file the engine tries the empty password first, which separates three
+cases that look identical from the outside:
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+| Case | Reported as |
+|---|---|
+| Not encrypted at all | **Skipped** — nothing to unlock |
+| Encrypted, no user password (permissions-only / owner lock) | **Success** — "no user password" |
+| Encrypted with a user password | **Success** — "password #N", or **Failed** |
 
-3. **Run the application**:
-   ```bash
-   python pdf_unlocker.py
-   ```
+That third column is the whole point of the design: the app never claims a
+password worked on a file that had none.
 
-### Dependencies
-
-- `pikepdf>=8.0.0` - PDF manipulation
-- `keyring>=24.0.0` - Secure password storage
-- `platformdirs>=4.0.0` - Cross-platform configuration paths
-- `tkinterdnd2>=0.3.0` - Drag-and-drop support
-- `customtkinter>=5.2.0` - Modern UI framework with DPI awareness
+Decryption itself relies on `pikepdf.Pdf.save()`, which omits encryption from
+its output. The pinned upper bound on pikepdf in `requirements.txt` exists
+because that behaviour is load-bearing.
 
 ## Usage
 
-### Basic Workflow
+The window is one panel with a **Files / Results** switcher, a password field,
+and the unlock button. Counters sit in the panel header, so a run can be
+watched from either tab.
 
-1. **Select PDFs**:
-   - Click "Browse Files" to select individual PDFs
-   - Click "Browse Folder" to select all PDFs in a folder
-   - Drag-and-drop files or folders directly into the file list area
+1. **Add PDFs** — `+ Files`, `+ Folder`, or drag and drop files or folders
+   anywhere on the window. Folder scans recurse but skip the `unlocked` output
+   folder, so re-running a folder never reprocesses its own results. Remove a
+   single file with the `✕` on its row.
+2. **Enter passwords** — one password, or several separated by commas. The
+   field is masked; the eye button reveals it. It stays editable either way.
+3. **Unlock** — the button names what it will do ("Unlock 6 files"). Progress,
+   counts and an ETA update live, and the view switches to Results so you can
+   watch it fill. `Stop` halts after the file currently being written.
+4. **Review** — `Open folder` reveals the output; `Export CSV` writes a report.
 
-2. **Enter Passwords**:
-   - Type passwords in the text area (one per line or comma-separated)
-   - Click the eye icon (👁) to show/hide passwords
-   - Check "Remember these passwords" to save them securely for future use
+Feedback is inline. A floating strip at the bottom reports what happened
+instead of a modal dialog, so nothing blocks the window mid-run. The only
+dialog left is the confirmation when you close during a batch.
 
-3. **Unlock PDFs**:
-   - Click "Unlock PDFs" to start processing
-   - Monitor progress with the progress bar and status updates
-   - Click "Cancel" if you need to stop
+### Keyboard
 
-4. **View Results**:
-   - Results show which files succeeded and which passwords worked
-   - Click "Open Output Folder" to view unlocked PDFs
-   - Click "Export Results" to save a CSV report
+| | |
+|---|---|
+| `Ctrl+O` | add files |
+| `Ctrl+Shift+O` | add a folder |
+| `Ctrl+Enter` / `Enter` in the field | unlock |
+| `Ctrl+L` | clear the list |
+| `Esc` | stop a running batch |
 
-### Password Input Formats
+### Appearance
 
-You can enter multiple passwords in two ways:
+Dark by default, with a light theme behind the `☾`/`☀` button in the top-right.
+The choice is saved to `config.json`. Every colour token is a `(light, dark)`
+pair, so CustomTkinter repaints the whole window on toggle with no per-widget
+theme code.
 
-**One per line**:
-```
-password123
-mySecret456
-unlock789
-```
-
-**Comma-separated**:
-```
-password123, mySecret456, unlock789
-```
-
-**Mixed**:
-```
-password123, mySecret456
-unlock789
-```
-
-### Output Location
-
-Unlocked PDFs are saved in an "unlocked" subfolder next to the original files:
+### Output location
 
 ```
-Original:  C:\Documents\locked.pdf
-Unlocked:  C:\Documents\unlocked\unlocked_locked.pdf
+Original:  C:\Documents\statement.pdf
+Unlocked:  C:\Documents\unlocked\unlocked_statement.pdf
 ```
 
-### Secure Password Storage
+One `unlocked` folder is created beside each source folder. Existing files with
+the same name are overwritten.
 
-When you check "Remember these passwords for future use":
-- Passwords are encrypted and stored in your system's credential manager
-- Windows: Windows Credential Locker
-- macOS: Keychain
-- Linux: Secret Service API (requires GNOME Keyring or KWallet)
-- Passwords automatically load on next launch
+## Passwords and privacy
 
-**Note**: The checkbox will be disabled if secure storage is not available on your system.
+- Nothing leaves your computer. All processing is local.
+- **Passwords are never displayed, logged or exported.** The results pane and
+  the CSV record *which* password matched by position ("password #2"), never
+  its value.
+- Checking "Remember in the OS credential store" stores passwords there
+  (Windows Credential Locker / macOS Keychain / Linux Secret Service) via
+  `keyring`. Unchecking it and unlocking again deletes them. The checkbox is
+  disabled if no keyring backend is available.
+- Exported CSV cells are escaped against spreadsheet formula injection, since
+  filenames and PDF error strings end up in that file.
 
-## Configuration
+## Project layout
 
-Configuration and logs are stored in platform-specific locations:
+```
+pdf_unlocker/
+├── pdf_unlocker/            application package
+│   ├── __main__.py          python -m pdf_unlocker
+│   ├── app.py               bootstrap: DPI, config, logging, window
+│   ├── logging_config.py    rotating file log + optional console
+│   ├── core/                no UI imports anywhere in here
+│   │   ├── config_manager.py    JSON config at platformdirs paths
+│   │   ├── file_scanner.py      PDF discovery and exclusion rules
+│   │   ├── password_manager.py  OS keyring integration
+│   │   ├── pdf_processor.py     threaded unlock engine
+│   │   └── results_exporter.py  CSV report
+│   └── ui/
+│       ├── main_window.py   window, layout and event handling
+│       └── theme.py         design tokens, each a (light, dark) pair
+├── tests/                   pytest suite
+├── scripts/                 run, build and shortcut helpers
+├── entry_point.py           PyInstaller target only
+└── pyproject.toml
+```
 
-**Windows**:
-- Config: `C:\Users\{username}\AppData\Local\PDFUnlockerPro\PDFUnlocker\config.json`
-- Logs: `C:\Users\{username}\AppData\Local\PDFUnlockerPro\PDFUnlocker\Logs\`
+Worker threads never touch a widget. They post typed `QueueMessage` objects to
+a `queue.Queue` that the window polls, and `process_batch` always emits a
+`COMPLETE` message even on failure, so the UI cannot be stranded mid-run.
 
-**macOS**:
-- Config: `~/Library/Application Support/PDFUnlocker/config.json`
-- Logs: `~/Library/Logs/PDFUnlocker/`
-
-**Linux**:
-- Config: `~/.config/PDFUnlocker/config.json`
-- Logs: `~/.local/state/PDFUnlocker/log/`
-
-### Configuration File
-
-The `config.json` file stores:
-- Last input/output folders (for convenience)
-- Remember passwords preference
-
-You can manually delete this file to reset all settings.
-
-## Building Standalone Executable
-
-To create a standalone .exe (Windows) or app bundle (macOS):
-
-### Windows
+## Development
 
 ```bash
-# Run the build script
-build_exe.bat
-
-# Or manually:
-pyinstaller --onefile --noconsole --name "PDF Unlocker Pro" pdf_unlocker.py
+pip install -r requirements-dev.txt
+python -m pytest        # test suite
+python -m ruff check .  # lint
 ```
 
-The executable will be in the `dist/` folder.
+The tests generate their PDF fixtures in-process with pikepdf, so there is no
+binary test data to maintain. Each test in `test_pdf_processor.py` pins down a
+specific defect: an unencrypted file being reported as a success, an
+owner-locked file being unopenable, and a worker exception freezing the UI.
 
-### macOS/Linux
+## Building a standalone executable
 
 ```bash
-pyinstaller --onefile --windowed --name "PDF Unlocker Pro" pdf_unlocker.py
+scripts\build_exe.bat
 ```
+
+Runs the test suite first, then produces `dist\PDF Unlocker Pro.exe`. The
+`--collect-all tkinterdnd2` flag is required: drag-and-drop depends on a Tcl
+package that PyInstaller does not detect on its own.
+
+## Configuration and logs
+
+| | Windows |
+|---|---|
+| Config | `%LOCALAPPDATA%\PDFUnlockerPro\PDFUnlocker\config.json` |
+| Logs | `%LOCALAPPDATA%\PDFUnlockerPro\PDFUnlocker\Logs\pdf_unlocker.log` |
+
+macOS and Linux paths follow `platformdirs` conventions. Logs rotate at 5 MB,
+keeping five files. Deleting `config.json` resets all settings. Config is
+written via a temp file and atomic replace, so an interrupted save cannot
+truncate it.
 
 ## Troubleshooting
 
-### "Drag-and-drop support is not available"
+**"None of the provided passwords worked"** — the password is wrong, or the PDF
+uses an encryption scheme qpdf cannot open. Owner-locked files no longer need a
+password at all, so this message now means the user password really is unknown.
 
-If you see this warning on startup:
-- The `tkinterdnd2` library is not properly installed
-- Drag-and-drop will be disabled, but Browse buttons still work
-- Try reinstalling: `pip install --upgrade --force-reinstall tkinterdnd2`
+**Drag and drop does nothing** — the window logs whether it registered at
+startup; check the log for "Drag-and-drop registered on N targets". If drops are
+unavailable the empty state says "Add PDFs with the buttons below" instead of
+"Drop PDFs here", and a warning strip appears. Reinstall with
+`pip install --upgrade --force-reinstall tkinterdnd2`. `+ Files` always works.
 
-### "Remember passwords (unavailable)"
+**The remember checkbox is greyed out** — no keyring backend. On Linux install
+`gnome-keyring` or `kwallet`.
 
-If the password remember checkbox is disabled:
-- Your system's keyring backend is not available
-- You can still use the app, passwords just won't be saved
-- On Linux, install `gnome-keyring` or `kwallet`
-
-### "None of the provided passwords worked"
-
-If all passwords fail:
-- Double-check your passwords for typos
-- Some PDFs have owner passwords vs user passwords (this tool tries user passwords)
-- The PDF might use advanced encryption that requires specialized tools
-
-### Application won't start
-
-1. Check Python version: `python --version` (need 3.8+)
-2. Reinstall dependencies: `pip install -r requirements.txt --upgrade`
-3. Check logs in the log directory for error details
-
-### Files are locked/in use
-
-- Close any PDF viewers (Adobe Reader, Preview, etc.)
-- Ensure the files aren't open in other applications
-- Check file permissions
-
-## Logging
-
-The application creates detailed logs for troubleshooting:
-
-- **Main log** (`pdf_unlocker.log`): All application activity
-- **Error log** (`error_log.txt`): Detailed error information
-- Logs automatically rotate (5MB max, keeps last 5 files)
-
-Check these logs if you encounter issues.
-
-## Security & Privacy
-
-- Passwords are NEVER stored in plain text
-- Secure storage uses OS-level encryption
-- Passwords are only stored if you explicitly check the "Remember" box
-- No data is sent over the network
-- All processing happens locally on your computer
+**A file will not open** — close it in any PDF viewer first, and check the log
+for the underlying qpdf error.
 
 ## Limitations
 
-- Can only unlock PDFs with known passwords (not a password cracker)
-- Processes user passwords, not owner/permissions passwords
-- Very large PDFs (100+ MB) may take longer to process
-- Maximum 3 PDFs processed concurrently (configurable in code)
+- Not a password cracker; you must know the password.
+- Files are processed 3 at a time (`DEFAULT_MAX_WORKERS` in
+  `pdf_unlocker/core/pdf_processor.py`, or pass `max_workers` to
+  `PDFProcessor`).
+- Very large PDFs take proportionally longer; there is no per-file progress.
+- Output filenames collide if two runs target the same folder; the later run
+  overwrites.
+- The file and result lists render the first 60 and 200 rows respectively and
+  count the remainder; export the CSV for the complete record.
 
 ## License
 
-This software is provided as-is for personal and commercial use.
-
-## Support
-
-For issues, questions, or suggestions:
-1. Check the log files for error details
-2. Review this README's troubleshooting section
-3. Open an issue on the project repository (if applicable)
-
-## Changelog
-
-### Version 1.0.0
-- Initial release
-- Multi-threaded PDF unlocking
-- Drag-and-drop support
-- Secure password storage
-- CSV export functionality
-- Cross-platform support (Windows, macOS, Linux)
+Proprietary. Provided as-is for internal use.

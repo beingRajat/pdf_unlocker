@@ -53,3 +53,10 @@ unlocked/
 
 # Test files
 test_pdfs/
+
+# Backups
+*.bak
+
+# Tests
+.pytest_cache/
+.ruff_cache/

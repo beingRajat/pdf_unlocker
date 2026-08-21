@@ -1,117 +1,67 @@
-"""PDF Unlocker Pro - Main Entry Point
+"""PDF Unlocker Pro - application bootstrap.
 
-A professional desktop application for unlocking password-protected PDFs.
+Wires up DPI awareness, configuration and logging, then hands control to the
+main window. Run it with: python -m pdf_unlocker
 """
 
-import logging
+import contextlib
 import sys
-import os
-from logging.handlers import RotatingFileHandler
 from tkinter import messagebox
 
-# Enable DPI awareness on Windows for crisp rendering
-if sys.platform == 'win32':
+from pdf_unlocker.core.config_manager import ConfigManager
+from pdf_unlocker.logging_config import setup_logging
+
+
+def enable_dpi_awareness() -> None:
+    """Ask Windows for per-monitor DPI awareness so text renders crisply.
+
+    CustomTkinter also does this, but only once a window exists; setting it
+    before any Tk call avoids a first-paint at the wrong scale. Failure is not
+    worth reporting - the app simply renders as it would have anyway.
+    """
+    if sys.platform != "win32":
+        return
     try:
         import ctypes
-        # Windows 8.1+ per-monitor DPI awareness
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)
-    except Exception:
-        try:
-            # Fallback for Windows Vista/7/8
-            ctypes.windll.user32.SetProcessDPIAware()
-        except Exception:
-            pass
 
-from core.config_manager import ConfigManager
-from ui.main_window import MainWindow
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # per-monitor v1
+    except (AttributeError, OSError):
+        with contextlib.suppress(AttributeError, OSError):
+            ctypes.windll.user32.SetProcessDPIAware()  # Vista/7/8 fallback
 
 
-def setup_logging(log_dir: str) -> logging.Logger:
-    """Configure application logger with rotation.
-
-    Args:
-        log_dir: Directory for log files.
+def main() -> int:
+    """Application entry point.
 
     Returns:
-        Configured logger instance.
+        Process exit code: 0 on a normal close, 1 on a fatal error.
     """
-    # Create logger
-    logger = logging.getLogger('pdf_unlocker')
-    logger.setLevel(logging.DEBUG)
+    enable_dpi_awareness()
 
-    # Create log directory if needed
-    os.makedirs(log_dir, exist_ok=True)
-
-    # File handler with rotation (5MB max, 5 backups)
-    log_file = os.path.join(log_dir, 'pdf_unlocker.log')
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=5 * 1024 * 1024,  # 5MB
-        backupCount=5,
-        encoding='utf-8'
-    )
-    file_handler.setLevel(logging.DEBUG)
-
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-
-    # Formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
-
-    # Add handlers
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-
-    return logger
-
-
-def main():
-    """Main application entry point."""
-    # Initialize configuration
     config_manager = ConfigManager()
-
-    # Setup logging
     logger = setup_logging(config_manager.get_log_dir())
-    logger.info("PDF Unlocker Pro starting...")
+    logger.info("PDF Unlocker Pro starting")
+
+    # Imported here so logging is configured before the UI module reports on
+    # drag-and-drop availability.
+    from pdf_unlocker.ui.main_window import MainWindow
 
     try:
-        # Create and run main window
         app = MainWindow(config_manager, logger)
-        logger.info("Main window created")
-
-        # Check for drag-and-drop availability
-        try:
-            import tkinterdnd2
-            logger.info("Drag-and-drop support available")
-        except ImportError:
-            logger.warning("tkinterdnd2 not available - drag-and-drop disabled")
-            messagebox.showwarning(
-                "Limited Functionality",
-                "Drag-and-drop support is not available. "
-                "Please use the Browse buttons to select files."
-            )
-
         app.mainloop()
         logger.info("Application closed normally")
-
+        return 0
     except Exception as e:
         logger.exception("Fatal error in main application")
-        try:
+        # No display available is fine; the log already has the traceback.
+        with contextlib.suppress(Exception):
             messagebox.showerror(
                 "Fatal Error",
-                f"An unexpected error occurred:\n\n{str(e)}\n\n"
-                f"Check the log file for details."
+                f"An unexpected error occurred:\n\n{e}\n\n"
+                "Check the log file for details.",
             )
-        except:
-            pass
-        sys.exit(1)
+        return 1
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    sys.exit(main())

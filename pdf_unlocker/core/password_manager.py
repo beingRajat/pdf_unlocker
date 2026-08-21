@@ -5,9 +5,13 @@ system keyring (Windows Credential Locker, macOS Keychain, Linux Secret Service)
 """
 
 import json
-from typing import List, Optional
+import logging
+from typing import Optional
+
 import keyring
-from keyring.errors import KeyringError
+from keyring.errors import KeyringError, PasswordDeleteError
+
+logger = logging.getLogger('pdf_unlocker.passwords')
 
 
 class PasswordManager:
@@ -35,7 +39,7 @@ class PasswordManager:
             return False
 
     @staticmethod
-    def save_passwords(passwords: List[str]) -> bool:
+    def save_passwords(passwords: list[str]) -> bool:
         """Save passwords to system keyring.
 
         Args:
@@ -57,11 +61,11 @@ class PasswordManager:
             )
             return True
         except KeyringError as e:
-            print(f"Error saving passwords: {e}")
+            logger.error(f"Could not save passwords to keyring: {e}")
             return False
 
     @staticmethod
-    def load_passwords() -> Optional[List[str]]:
+    def load_passwords() -> Optional[list[str]]:
         """Load passwords from system keyring.
 
         Returns:
@@ -80,7 +84,7 @@ class PasswordManager:
                 return json.loads(password_json)
             return None
         except (KeyringError, json.JSONDecodeError) as e:
-            print(f"Error loading passwords: {e}")
+            logger.error(f"Could not load passwords from keyring: {e}")
             return None
 
     @staticmethod
@@ -99,6 +103,9 @@ class PasswordManager:
                 PasswordManager.USERNAME
             )
             return True
+        except PasswordDeleteError:
+            # Nothing stored: clearing is already the desired end state.
+            return True
         except KeyringError as e:
-            print(f"Error clearing passwords: {e}")
+            logger.error(f"Could not clear passwords from keyring: {e}")
             return False

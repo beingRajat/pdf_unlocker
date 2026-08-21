@@ -1,5 +1,6 @@
-pikepdf>=8.0.0
-keyring>=24.0.0
-platformdirs>=4.0.0
-tkinterdnd2>=0.3.0
-customtkinter>=5.2.0
+# Runtime dependencies. Upper bounds are deliberate: see pyproject.toml.
+pikepdf>=10.2,<11
+keyring>=25.7,<26
+platformdirs>=4.3,<5
+customtkinter>=5.2,<6
+tkinterdnd2>=0.4,<0.5

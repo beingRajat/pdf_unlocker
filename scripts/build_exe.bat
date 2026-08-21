@@ -1,39 +1,49 @@
 @echo off
+REM PDF Unlocker Pro - build a standalone Windows executable.
+setlocal
+cd /d "%~dp0.."
+
 echo ========================================
-echo PDF Unlocker Pro - Build Script
+echo PDF Unlocker Pro - Build
 echo ========================================
 echo.
 
-REM Check if PyInstaller is installed
 python -c "import PyInstaller" 2>NUL
 if errorlevel 1 (
-    echo PyInstaller is not installed.
     echo Installing PyInstaller...
     pip install pyinstaller
     echo.
 )
 
+echo Running the test suite before building...
+python -m pytest -q
+if errorlevel 1 (
+    echo.
+    echo ========================================
+    echo Tests FAILED - build aborted
+    echo ========================================
+    pause
+    exit /b 1
+)
+echo.
+
 echo Building executable...
 echo.
 
-REM Build the executable
+REM tkinterdnd2 ships a Tcl package (tkdnd) that PyInstaller cannot infer, so
+REM collect its data files explicitly or drag-and-drop dies in the build.
 pyinstaller --onefile ^
     --noconsole ^
     --name "PDF Unlocker Pro" ^
-    --add-data "core;core" ^
-    --add-data "ui;ui" ^
-    --hidden-import="pikepdf" ^
-    --hidden-import="keyring" ^
-    --hidden-import="platformdirs" ^
-    --hidden-import="tkinterdnd2" ^
-    --hidden-import="keyring.backends" ^
+    --collect-all tkinterdnd2 ^
+    --collect-data customtkinter ^
     --hidden-import="keyring.backends.Windows" ^
-    pdf_unlocker.py
+    entry_point.py
 
 if errorlevel 1 (
     echo.
     echo ========================================
-    echo Build FAILED!
+    echo Build FAILED
     echo ========================================
     pause
     exit /b 1
@@ -41,12 +51,9 @@ if errorlevel 1 (
 
 echo.
 echo ========================================
-echo Build complete!
+echo Build complete
 echo ========================================
 echo.
-echo Executable location: dist\PDF Unlocker Pro.exe
-echo.
-echo You can now distribute the .exe file.
-echo No Python installation required on target machines.
+echo Executable: dist\PDF Unlocker Pro.exe
 echo.
 pause
