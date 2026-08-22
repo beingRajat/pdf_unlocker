@@ -1,4 +1,4 @@
-# PDF Unlocker Pro
+# PDF Unlocker
 
 A Windows desktop application that removes encryption from password-protected
 PDFs in batch. You supply the passwords; it tries each one against every file
@@ -144,7 +144,7 @@ owner-locked file being unopenable, and a worker exception freezing the UI.
 scripts\build_exe.bat
 ```
 
-Runs the test suite first, then produces `dist\PDF Unlocker Pro.exe`. The
+Runs the test suite first, then produces `dist\PDF Unlocker.exe`. The
 `--collect-all tkinterdnd2` flag is required: drag-and-drop depends on a Tcl
 package that PyInstaller does not detect on its own.
 

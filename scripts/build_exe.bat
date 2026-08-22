@@ -1,10 +1,10 @@
 @echo off
-REM PDF Unlocker Pro - build a standalone Windows executable.
+REM PDF Unlocker - build a standalone Windows executable.
 setlocal
 cd /d "%~dp0.."
 
 echo ========================================
-echo PDF Unlocker Pro - Build
+echo PDF Unlocker - Build
 echo ========================================
 echo.
 
@@ -34,7 +34,7 @@ REM tkinterdnd2 ships a Tcl package (tkdnd) that PyInstaller cannot infer, so
 REM collect its data files explicitly or drag-and-drop dies in the build.
 pyinstaller --onefile ^
     --noconsole ^
-    --name "PDF Unlocker Pro" ^
+    --name "PDF Unlocker" ^
     --collect-all tkinterdnd2 ^
     --collect-data customtkinter ^
     --hidden-import="keyring.backends.Windows" ^
@@ -54,6 +54,6 @@ echo ========================================
 echo Build complete
 echo ========================================
 echo.
-echo Executable: dist\PDF Unlocker Pro.exe
+echo Executable: dist\PDF Unlocker.exe
 echo.
 pause

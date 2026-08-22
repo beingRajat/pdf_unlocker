@@ -1,4 +1,4 @@
-' Create Desktop Shortcut for PDF Unlocker Pro
+' Create Desktop Shortcut for PDF Unlocker
 Set WshShell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
@@ -9,12 +9,12 @@ DesktopPath = WshShell.SpecialFolders("Desktop")
 ScriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 
 ' Create the shortcut
-Set Shortcut = WshShell.CreateShortcut(DesktopPath & "\PDF Unlocker Pro.lnk")
+Set Shortcut = WshShell.CreateShortcut(DesktopPath & "\PDF Unlocker.lnk")
 
 ' Set shortcut properties
 Shortcut.TargetPath = ScriptDir & "\run_app.bat"
 Shortcut.WorkingDirectory = fso.GetParentFolderName(ScriptDir)
-Shortcut.Description = "PDF Unlocker Pro - Unlock password-protected PDFs"
+Shortcut.Description = "PDF Unlocker - Unlock password-protected PDFs"
 Shortcut.IconLocation = "shell32.dll,265"  ' Lock icon
 
 ' Save the shortcut
@@ -22,6 +22,6 @@ Shortcut.Save
 
 ' Show success message
 WScript.Echo "Desktop shortcut created successfully!" & vbCrLf & vbCrLf & _
-             "You can now launch PDF Unlocker Pro from your desktop by double-clicking:" & vbCrLf & _
-             "'PDF Unlocker Pro'"
+             "You can now launch PDF Unlocker from your desktop by double-clicking:" & vbCrLf & _
+             "'PDF Unlocker'"
 

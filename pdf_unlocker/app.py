@@ -1,4 +1,4 @@
-"""PDF Unlocker Pro - application bootstrap.
+"""PDF Unlocker - application bootstrap.
 
 Wires up DPI awareness, configuration and logging, then hands control to the
 main window. Run it with: python -m pdf_unlocker
@@ -40,7 +40,7 @@ def main() -> int:
 
     config_manager = ConfigManager()
     logger = setup_logging(config_manager.get_log_dir())
-    logger.info("PDF Unlocker Pro starting")
+    logger.info("PDF Unlocker starting")
 
     # Imported here so logging is configured before the UI module reports on
     # drag-and-drop availability.

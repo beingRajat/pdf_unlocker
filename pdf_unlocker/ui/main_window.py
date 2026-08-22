@@ -152,7 +152,7 @@ class MainWindow(ctk.CTk):
     # =====================================================================
 
     def _setup_window(self):
-        self.title("Unlocker")
+        self.title("PDF Unlocker")
         self.configure(fg_color=Theme.BG)
 
         # CustomTkinter multiplies every geometry figure by the display
@@ -259,7 +259,7 @@ class MainWindow(ctk.CTk):
 
         ctk.CTkLabel(
             titles,
-            text="Unlocker",
+            text="PDF Unlocker",
             text_color=Theme.TEXT,
             font=ctk.CTkFont(Theme.FONT, Theme.SIZE_DISPLAY, weight="bold"),
         ).pack(anchor="w")

@@ -1,10 +1,10 @@
 @echo off
-REM PDF Unlocker Pro - launcher. Installs dependencies on first run.
+REM PDF Unlocker - launcher. Installs dependencies on first run.
 setlocal
 cd /d "%~dp0.."
 
 echo ========================================
-echo PDF Unlocker Pro
+echo PDF Unlocker
 echo ========================================
 echo.
 
@@ -33,7 +33,7 @@ if errorlevel 1 (
     echo.
 )
 
-echo Starting PDF Unlocker Pro...
+echo Starting PDF Unlocker...
 echo.
 python -m pdf_unlocker
 
