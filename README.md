@@ -1,11 +1,51 @@
 # PDF Unlocker
 
-A Windows desktop application that removes encryption from password-protected
-PDFs in batch. You supply the passwords; it tries each one against every file
-and writes decrypted copies alongside the originals.
+A Windows desktop app that strips encryption from password-protected PDFs in
+batch — you supply the passwords, it writes decrypted copies alongside the
+originals. It is **not** a password cracker; it only opens files whose password
+you already know.
 
-This is **not** a password cracker. It only opens files whose password you
-already know.
+The decryption itself is about ten lines of `pikepdf`. Everything around it is
+the part worth reading:
+
+- **Threaded work that never touches a widget.** Workers post typed
+  `QueueMessage` objects to a `queue.Queue`; the window drains it on the Tk
+  thread via `after()`. Tkinter is not thread-safe, so a violation surfaces as
+  an intermittent crash rather than a failing test.
+- **A batch that cannot strand the UI.** `process_batch` emits exactly one
+  `COMPLETE` on every path, fatal errors included, so the window never sits
+  disabled waiting for a message that is not coming.
+- **A probe that refuses to guess.** Trying the empty password first separates
+  three cases that look identical from outside — unencrypted, owner-locked,
+  user-password-locked — so the app never reports that a password worked on a
+  file that had none.
+- **Secrets that stay secret.** A result carries the 1-based *index* of the
+  password that matched, never its value. Nothing reaches the screen, the log
+  or the exported CSV.
+- **Writes that survive interruption.** Config saves go to a temp file and
+  `os.replace`, and exported CSV cells are escaped against spreadsheet formula
+  injection because filenames and qpdf error strings are attacker-influenced.
+- **Themes as `(light, dark)` token pairs.** CustomTkinter resolves each pair
+  against the current appearance mode, so switching themes needs no repainting
+  code anywhere in the UI.
+- **Tests that build their own PDFs.** Fixtures are generated in-process with
+  `pikepdf`, so there is no binary test data, and each regression test names
+  the defect it prevents.
+
+Each of those decisions is documented where it lives, next to the code it
+governs, rather than in a separate design doc that drifts:
+
+| Decision | Where the reasoning is |
+|---|---|
+| Empty-password probe, three outcomes | `PDFProcessor._attempt_unlock` in [`core/pdf_processor.py`](pdf_unlocker/core/pdf_processor.py) |
+| Guaranteed `COMPLETE`, index-only results | `PDFProcessor.process_batch` and `UnlockResult` in the same file |
+| Worker/UI boundary | module docstring and `MainWindow._poll_queue` in [`ui/main_window.py`](pdf_unlocker/ui/main_window.py) |
+| Atomic config write | `ConfigManager.save_config` in [`core/config_manager.py`](pdf_unlocker/core/config_manager.py) |
+| Formula-injection escaping | `_sanitize` in [`core/results_exporter.py`](pdf_unlocker/core/results_exporter.py) |
+| Output-folder exclusion rules | `find_pdfs` in [`core/file_scanner.py`](pdf_unlocker/core/file_scanner.py) |
+| Theme token pairs | module docstring in [`ui/theme.py`](pdf_unlocker/ui/theme.py) |
+| Dependency upper bounds | comment above `dependencies` in [`pyproject.toml`](pyproject.toml) |
+| The defects the suite pins | test docstrings in [`tests/test_pdf_processor.py`](tests/test_pdf_processor.py) |
 
 ## Quick start
 
@@ -121,10 +161,6 @@ pdf_unlocker/
 └── pyproject.toml
 ```
 
-Worker threads never touch a widget. They post typed `QueueMessage` objects to
-a `queue.Queue` that the window polls, and `process_batch` always emits a
-`COMPLETE` message even on failure, so the UI cannot be stranded mid-run.
-
 ## Development
 
 ```bash
@@ -133,10 +169,9 @@ python -m pytest        # test suite
 python -m ruff check .  # lint
 ```
 
-The tests generate their PDF fixtures in-process with pikepdf, so there is no
-binary test data to maintain. Each test in `test_pdf_processor.py` pins down a
-specific defect: an unencrypted file being reported as a success, an
-owner-locked file being unopenable, and a worker exception freezing the UI.
+Fixtures are built in-process by the `make_pdf` fixture in `tests/conftest.py`;
+add tests there rather than checking in binary PDFs. Each regression test in
+`test_pdf_processor.py` names the defect it prevents in its docstring.
 
 ## Building a standalone executable
 
@@ -147,6 +182,11 @@ scripts\build_exe.bat
 Runs the test suite first, then produces `dist\PDF Unlocker.exe`. The
 `--collect-all tkinterdnd2` flag is required: drag-and-drop depends on a Tcl
 package that PyInstaller does not detect on its own.
+
+No prebuilt binary is published. An unsigned, PyInstaller-packed executable
+that removes PDF passwords is close to a worst case for antivirus heuristics,
+and a SmartScreen warning on a security tool is worse than no download at all.
+Build it yourself, or run from source.
 
 ## Configuration and logs
 
@@ -192,4 +232,4 @@ for the underlying qpdf error.
 
 ## License
 
-Proprietary. Provided as-is for internal use.
+MIT. See [LICENSE](LICENSE).
